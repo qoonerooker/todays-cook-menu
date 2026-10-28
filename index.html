@@ -1,0 +1,747 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>傷む前に作るレシピ</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Zen+Maru+Gothic:wght@600;700&display=swap">
+<style>
+/* 材料の残り日数で並べ替え、傷みやすいものを使うレシピを上に出す一画面構成。
+   色はトークンに集約し、明るい背景と暗い背景の両方で同じ役割を持たせる。 */
+:root {
+  --bg: #f5f4ef;
+  --surface: #ffffff;
+  --ink: #1d2a22;
+  --muted: #5f6b63;
+  --line: #d9ddd3;
+  --chip: #eaeee5;
+  --accent: #c2472a;
+  --urgent: #b3261e;
+  --soon: #a85f0a;
+  --ok: #2f6b45;
+  --display: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", var(--body);
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151a18;
+    --surface: #1e2522;
+    --ink: #e8ece6;
+    --muted: #9aa69e;
+    --line: #34413b;
+    --chip: #27322d;
+    --accent: #f0785a;
+    --urgent: #ff8a7e;
+    --soon: #f0b050;
+    --ok: #86cfa2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151a18;
+  --surface: #1e2522;
+  --ink: #e8ece6;
+  --muted: #9aa69e;
+  --line: #34413b;
+  --chip: #27322d;
+  --accent: #f0785a;
+  --urgent: #ff8a7e;
+  --soon: #f0b050;
+  --ok: #86cfa2;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--body);
+  font-size: 15px;
+  line-height: 1.7;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+main { max-width: 720px; margin: 0 auto; display: grid; gap: 20px; }
+h1, h2, h3 { font-family: var(--display); line-height: 1.35; text-wrap: balance; margin: 0; }
+h1 { font-size: 30px; font-weight: 700; }
+h2 { font-size: 19px; font-weight: 600; }
+h3 { font-size: 18px; font-weight: 600; }
+p { margin: 0; }
+
+.masthead { display: grid; gap: 6px; padding-top: 8px; }
+.kicker { color: var(--accent); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+.lede { color: var(--muted); }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 20px;
+  display: grid;
+  gap: 14px;
+}
+.section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px; }
+.muted { color: var(--muted); font-size: 13px; }
+
+.add-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 120px 110px auto;
+  gap: 10px;
+  align-items: end;
+}
+.field { display: grid; gap: 4px; min-width: 0; }
+.field > span { font-size: 13px; color: var(--muted); font-weight: 500; }
+input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 9px 11px;
+  width: 100%;
+  min-width: 0;
+}
+input:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.btn {
+  font: inherit;
+  font-weight: 700;
+  color: #ffffff;
+  background: var(--accent);
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  cursor: pointer;
+  min-height: 42px;
+}
+.btn.ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.stock { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stock-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--ok); }
+.tier-urgent .dot { background: var(--urgent); }
+.tier-soon .dot { background: var(--soon); }
+.stock-name { overflow-wrap: anywhere; }
+.stock-days { font-variant-numeric: tabular-nums; font-size: 13px; color: var(--muted); white-space: nowrap; }
+.tier-urgent .stock-days { color: var(--urgent); font-weight: 700; }
+.tier-soon .stock-days { color: var(--soon); font-weight: 700; }
+.remove {
+  font: inherit;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+.empty { color: var(--muted); font-size: 14px; }
+.pantry-note { font-size: 12px; color: var(--muted); border-top: 1px dashed var(--line); padding-top: 12px; }
+
+.recipes { display: grid; gap: 14px; }
+.recipe {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 18px 20px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.recipe-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.time { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.summary { font-size: 14px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-size: 13px;
+  background: var(--chip);
+  border-radius: 999px;
+  padding: 2px 10px;
+}
+.chip.tier-urgent { color: var(--urgent); font-weight: 700; }
+.chip.tier-soon { color: var(--soon); font-weight: 700; }
+.buy { font-size: 14px; color: var(--soon); font-weight: 500; }
+.ok-line { font-size: 14px; color: var(--ok); font-weight: 500; }
+
+details { border-top: 1px solid var(--line); padding-top: 10px; }
+summary { cursor: pointer; color: var(--accent); font-weight: 500; }
+.ings { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 4px; }
+.ings li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  font-size: 14px;
+  padding-bottom: 4px;
+  border-bottom: 1px dotted var(--line);
+}
+.ings .amt { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ings .tag { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.ings .tag.need { color: var(--soon); font-weight: 700; }
+.ings .tag.have { color: var(--ok); }
+.steps { margin: 12px 0 0; padding-left: 1.4em; display: grid; gap: 6px; font-size: 14px; }
+
+.shopping-list { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.shopping-list li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; font-size: 14px; }
+.shopping-list .amt { color: var(--muted); font-variant-numeric: tabular-nums; }
+.shopping-list .tag { font-size: 12px; color: var(--muted); }
+.masthead-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+.action-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.recipe-actions { display: flex; align-items: center; gap: 10px; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.saved-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; }
+.saved-list .recipe { background: var(--bg); }
+
+@media (max-width: 480px) {
+  .add-form { grid-template-columns: 1fr 1fr; }
+  .add-form .field:first-child { grid-column: 1 / -1; }
+  .add-form .btn { grid-column: 1 / -1; }
+  h1 { font-size: 26px; }
+}
+</style>
+
+<main id="mainView">
+  <header class="masthead">
+    <div class="masthead-top">
+      <p class="kicker">冷蔵庫の在庫から</p>
+      <button type="button" id="savedToggle" class="btn ghost">保存レシピ一覧 <span id="savedCount"></span></button>
+    </div>
+    <h1>傷む前に作るレシピ</h1>
+    <p class="lede">材料と残り日数を入れると、傷みやすいものを使うレシピから順に提案します。</p>
+  </header>
+
+  <section class="panel" aria-labelledby="stockTitle">
+    <div class="section-head">
+      <h2 id="stockTitle">手持ちの材料</h2>
+      <span class="muted" id="stockCount"></span>
+    </div>
+    <form id="addForm" class="add-form" autocomplete="off">
+      <label class="field">
+        <span>材料名</span>
+        <input id="nameInput" list="foodList" placeholder="例：鶏もも肉" required>
+      </label>
+      <label class="field">
+        <span>量</span>
+        <input id="countInput" type="text" placeholder="例：2個、300g">
+      </label>
+      <label class="field">
+        <span>残り日数</span>
+        <input id="daysInput" type="number" min="0" max="365" inputmode="numeric" placeholder="自動">
+      </label>
+      <button type="submit" class="btn">追加</button>
+    </form>
+    <datalist id="foodList"></datalist>
+    <p class="muted">残り日数を空欄にすると、冷蔵保存での一般的な目安を使います。</p>
+    <ul id="stock" class="stock" aria-live="polite"></ul>
+    <p id="stockEmpty" class="empty">まだ材料がありません。</p>
+    <p class="pantry-note">塩・醤油・砂糖・みりん・酒・味噌・油などの常備品は持っている前提で提案します。</p>
+  </section>
+
+  <section aria-labelledby="recipeTitle">
+    <div class="section-head" style="margin-bottom: 12px">
+      <h2 id="recipeTitle">おすすめレシピ</h2>
+      <span class="muted">傷みやすい材料ほど上に出ます</span>
+    </div>
+    <button type="button" id="makeBtn" class="btn" style="margin-bottom: 14px">レシピを作成</button>
+    <div id="recipes" class="recipes"></div>
+  </section>
+
+</main>
+
+<main id="savedView" hidden>
+  <header class="masthead">
+    <div class="masthead-top">
+      <button type="button" id="backBtn" class="btn ghost">← レシピに戻る</button>
+    </div>
+    <h1>保存レシピ</h1>
+    <p class="lede">このブラウザに保存されたレシピです。買い足しは現在の手持ちとの差分で表示します。</p>
+  </header>
+
+  <section class="panel" aria-labelledby="savedTitle">
+    <div class="section-head">
+      <h2 id="savedTitle">保存したレシピ</h2>
+      <span class="muted">このブラウザに保存されます</span>
+    </div>
+    <ul id="savedList" class="saved-list"></ul>
+    <p id="savedEmpty" class="empty">保存したレシピはここに並びます。</p>
+  </section>
+</main>
+
+<script>
+const KEY = 'recipe-from-stock-items';
+const SAVED_KEY = 'recipe-from-stock-saved';
+
+// 常備品：持っている前提で、買い足し・レシピの一致判定から外す
+const PANTRY = ['塩', 'こしょう', '醤油', '砂糖', 'みりん', '酒', '味噌', '酢', '油', 'ごま油', '片栗粉', '小麦粉', 'だし', 'にんにく', 'しょうが', '豆板醤', 'ケチャップ', '中濃ソース'];
+
+// 冷蔵・購入後の残り日数の目安（日）
+const FOODS = {
+  '鶏もも肉': 2, '豚こま肉': 2, '合いびき肉': 2, '鮭': 2, '豆腐': 3, '油揚げ': 3,
+  '卵': 14, '牛乳': 5, '生クリーム': 5, 'ベーコン': 7, '食パン': 4, 'ご飯': 2,
+  '焼きそば麺': 3, 'レタス': 4, 'キャベツ': 10, 'ほうれん草': 3, '小松菜': 3,
+  'もやし': 2, 'きゅうり': 4, 'トマト': 5, 'なす': 5, 'ピーマン': 7, 'きのこ': 4,
+  '長ねぎ': 7, '玉ねぎ': 21, 'じゃがいも': 21, 'にんじん': 14, '大根': 14,
+  'パスタ': 180, 'バター': 30, 'ヨーグルト': 7, 'アボカド': 3,
+  '豚バラ肉': 2, '白菜': 14, 'ブロッコリー': 4, 'ツナ缶': 365, 'ハム': 7, 'ささみ': 2,
+  'ごま': 365, 'かぼちゃ': 60, 'さつまいも': 30, 'えのき': 4, 'ウインナー': 10,
+  'かまぼこ': 7, '厚揚げ': 3, 'マヨネーズ': 60, 'カレー粉': 365, 'チーズ': 14
+};
+const DEFAULT_DAYS = 7;
+
+// 材料ごとの一般的な単位（数字だけの量を入れたときに補う）
+const UNITS = {
+  '鶏もも肉': '枚', '豚こま肉': 'g', '合いびき肉': 'g', '鮭': '切れ', '豆腐': '丁', '油揚げ': '枚',
+  '卵': '個', '牛乳': 'ml', '生クリーム': 'ml', 'ベーコン': '枚', '食パン': '枚', 'ご飯': '膳',
+  '焼きそば麺': '玉', 'レタス': '玉', 'キャベツ': '玉', 'ほうれん草': '束', '小松菜': '束',
+  'もやし': '袋', 'きゅうり': '本', 'トマト': '個', 'なす': '本', 'ピーマン': '個', 'きのこ': 'パック',
+  '長ねぎ': '本', '玉ねぎ': '個', 'じゃがいも': '個', 'にんじん': '本', '大根': '本', 'パスタ': 'g',
+  'バター': 'g', 'ヨーグルト': 'g', 'アボカド': '個', '豚バラ肉': 'g', '白菜': '個', 'ブロッコリー': '株',
+  'ツナ缶': '缶', 'ハム': '枚', 'ささみ': '本', 'ごま': 'g', 'かぼちゃ': '個', 'さつまいも': '本',
+  'えのき': '袋', 'ウインナー': '本', 'かまぼこ': '本', '厚揚げ': '枚', 'マヨネーズ': 'g',
+  'カレー粉': 'g', 'チーズ': 'g'
+};
+
+// 数字だけ（分数を含む）の量なら、材料の単位を付ける。単位つきの量はそのまま使う
+function normalizeAmount(name, text) {
+  if (!/^\d+(?:\/\d+)?$/.test(text)) return text;
+  return text + (UNITS[name] ?? '個');
+}
+
+// role: 1 = 主材料（不足すると買い足し対象）、0 = 副材料（あれば使う）
+const RECIPES = [
+  { name: '鶏肉と野菜の甘辛炒め', time: 15,
+    ings: [['鶏もも肉', '300g', 1], ['玉ねぎ', '1個', 1], ['ピーマン', '2個', 0], ['醤油', '大さじ2', 0], ['砂糖', '大さじ1', 0], ['みりん', '大さじ1', 0]],
+    steps: ['鶏肉は一口大に切り、塩こしょうをふる。', '玉ねぎは薄切り、ピーマンは乱切りにする。', '鶏肉を皮目から焼き、焼き色がついたら野菜を加えて炒める。', '調味料を回し入れ、照りが出るまで絡める。'] },
+  { name: '豚肉とキャベツのみそ炒め', time: 12,
+    ings: [['豚こま肉', '200g', 1], ['キャベツ', '1/4玉', 1], ['味噌', '大さじ2', 0], ['みりん', '大さじ1', 0], ['砂糖', '大さじ1', 0], ['酒', '大さじ1', 0]],
+    steps: ['キャベツは一口大にちぎる。', '豚肉を炒め、色が変わったらキャベツを加える。', '調味料を合わせて加え、キャベツがしんなりするまで炒める。'] },
+  { name: '親子丼', time: 15,
+    ings: [['鶏もも肉', '1枚', 1], ['玉ねぎ', '1/2個', 1], ['卵', '3個', 1], ['ご飯', '2膳分', 1], ['醤油', '大さじ2', 0], ['みりん', '大さじ2', 0], ['砂糖', '小さじ1', 0], ['だし', '100ml', 0]],
+    steps: ['鶏肉と玉ねぎを一口大に切る。', 'だし・調味料で鶏肉と玉ねぎを煮る。', '溶き卵を半量ずつ回し入れ、半熟になったらご飯にのせる。'] },
+  { name: '鮭とキャベツのちゃんちゃん焼き風', time: 20,
+    ings: [['鮭', '2切れ', 1], ['キャベツ', '1/4玉', 1], ['もやし', '1/2袋', 0], ['きのこ', '1パック', 0], ['味噌', '大さじ2', 0], ['酒', '大さじ1', 0], ['砂糖', '大さじ1', 0], ['バター', '10g', 0]],
+    steps: ['鮭に塩をふって10分おき、水気を拭く。', '野菜を炒めて、フライパンの端に寄せる。', '鮭を焼き、味噌と調味料を合わせた汁を加えて蓋をして蒸し煮にする。', '仕上げにバターをのせる。'] },
+  { name: '豆腐の麻婆風', time: 15,
+    ings: [['豆腐', '1丁', 1], ['合いびき肉', '150g', 1], ['長ねぎ', '1/2本', 0], ['豆板醤', '小さじ1', 0], ['味噌', '大さじ1', 0], ['醤油', '大さじ1', 0], ['砂糖', '小さじ1', 0], ['片栗粉', '小さじ1', 0], ['にんにく', '1片', 0], ['しょうが', '1片', 0]],
+    steps: ['豆腐は1.5cm角に切り、熱湯で軽く茹でて水気を切る。', 'にんにく・しょうが・長ねぎを炒め、ひき肉を加えて色が変わるまで炒める。', '豆板醤と味噌を炒め、水と調味料を加えて煮立てる。', '豆腐を加えてひと煮立ちさせ、水溶き片栗粉でとろみをつける。'] },
+  { name: 'ミートソース風パスタ', time: 25,
+    ings: [['合いびき肉', '200g', 1], ['玉ねぎ', '1個', 1], ['トマト', '2個', 1], ['パスタ', '200g', 1], ['にんじん', '1/2本', 0], ['ケチャップ', '大さじ2', 0], ['中濃ソース', '大さじ1', 0]],
+    steps: ['玉ねぎとにんじんをみじん切りにし、ひき肉と一緒に炒める。', 'トマトを崩しながら加え、15分ほど煮詰める。', 'ケチャップとソースで味を整える。', 'パスタを茹でてソースと和える。'] },
+  { name: '野菜たっぷりオムレツ', time: 10,
+    ings: [['卵', '3個', 1], ['ピーマン', '1個', 1], ['玉ねぎ', '1/4個', 0], ['ベーコン', '2枚', 0], ['牛乳', '大さじ2', 0]],
+    steps: ['野菜とベーコンを細かく刻み、軽く炒める。', '溶き卵に牛乳と塩こしょうを加えて具と混ぜる。', 'フライパンで半熟になるまで焼き、形を整える。'] },
+  { name: 'きのこと鶏のクリーム煮', time: 20,
+    ings: [['鶏もも肉', '1枚', 1], ['きのこ', '1パック', 1], ['玉ねぎ', '1/2個', 0], ['牛乳', '200ml', 0], ['生クリーム', '100ml', 0], ['小麦粉', '大さじ1', 0]],
+    steps: ['鶏肉は一口大に切り、焼き色をつける。', '玉ねぎときのこを加えてしんなりするまで炒める。', '小麦粉をふり入れ、牛乳を少しずつ加えてのばす。', '生クリームを加えて、とろみがつくまで煮る。'] },
+  { name: 'ほうれん草とベーコンのソテー', time: 8,
+    ings: [['ほうれん草', '1束', 1], ['ベーコン', '2枚', 1], ['にんにく', '1片', 0], ['醤油', '小さじ1', 0]],
+    steps: ['ほうれん草は4cm幅に切り、茎と葉を分けておく。', 'ベーコンとにんにくを炒め、茎から加えて炒める。', '葉を加えてさっと炒め、醤油で味を整える。'] },
+  { name: 'もやしと豚肉の中華炒め', time: 10,
+    ings: [['もやし', '1袋', 1], ['豚こま肉', '150g', 1], ['長ねぎ', '1/2本', 0], ['ごま油', '小さじ1', 0], ['醤油', '小さじ1', 0]],
+    steps: ['豚肉を強火で炒め、色が変わったら取り出す。', 'もやしと長ねぎを強火で手早く炒める。', '豚肉を戻し入れ、醤油とごま油で仕上げる。'] },
+  { name: '大根と鶏肉の煮物', time: 30,
+    ings: [['大根', '1/3本', 1], ['鶏もも肉', '300g', 1], ['醤油', '大さじ2', 0], ['みりん', '大さじ1', 0], ['砂糖', '大さじ1', 0], ['酒', '大さじ2', 0], ['しょうが', '1片', 0]],
+    steps: ['大根は1cm厚のいちょう切りにし、下茹でする。', '鶏肉を焼いて余分な脂を拭き、大根と水・調味料を加える。', '落し蓋をして、大根がやわらかくなるまで弱火で煮る。'] },
+  { name: 'じゃがいものミルクスープ', time: 25,
+    ings: [['じゃがいも', '2個', 1], ['玉ねぎ', '1/2個', 1], ['牛乳', '300ml', 1], ['ベーコン', '2枚', 0], ['小麦粉', '大さじ1', 0]],
+    steps: ['じゃがいもと玉ねぎを薄切りにする。', 'ベーコンと野菜を炒め、小麦粉をふり入れる。', '水を加えて煮て、じゃがいもがやわらかくなったら牛乳を加えて温める。'] },
+  { name: 'なすと豚肉の味噌炒め', time: 12,
+    ings: [['なす', '2本', 1], ['豚こま肉', '150g', 1], ['味噌', '大さじ1', 1], ['砂糖', '小さじ1', 0], ['みりん', '大さじ1', 0], ['酒', '大さじ1', 0]],
+    steps: ['なすは乱切りにして、油でしんなりするまで炒める。', '豚肉を加えて炒め、色が変わったら調味料を合わせた味噌を加える。', '全体に絡めて仕上げる。'] },
+  { name: '焼きそば', time: 12,
+    ings: [['焼きそば麺', '2玉', 1], ['キャベツ', '1/4玉', 0], ['もやし', '1/2袋', 0], ['豚こま肉', '100g', 0], ['中濃ソース', '大さじ2', 0]],
+    steps: ['キャベツ・豚肉・もやしを炒め、火が通ったら端に寄せる。', '麺をほぐして加え、ほぐしながら炒める。', 'ソースを回しかけて全体を炒め合わせる。'] },
+  { name: '小松菜と油揚げの煮びたし', time: 10,
+    ings: [['小松菜', '1束', 1], ['油揚げ', '1枚', 1], ['だし', '150ml', 0], ['醤油', '小さじ2', 0], ['みりん', '小さじ2', 0]],
+    steps: ['油揚げは熱湯をかけて油抜きし、短冊切りにする。', 'だしと調味料で油揚げを煮る。', '小松菜を加えて、しんなりするまで煮る。'] },
+  { name: '具だくさん味噌汁', time: 15,
+    ings: [['豆腐', '1/2丁', 1], ['味噌', '大さじ2', 0], ['油揚げ', '1枚', 0], ['小松菜', '1/2束', 0], ['長ねぎ', '1/2本', 0], ['玉ねぎ', '1/4個', 0], ['だし', '600ml', 0]],
+    steps: ['だしで野菜を煮る。', '豆腐と油揚げを加えて、ひと煮立ちさせる。', '火を弱めて味噌を溶き入れる。'] },
+  { name: 'フレンチトースト', time: 15,
+    ings: [['食パン', '2枚', 1], ['卵', '1個', 1], ['牛乳', '100ml', 1], ['砂糖', '大さじ1', 0], ['バター', '10g', 0]],
+    steps: ['卵・牛乳・砂糖を混ぜ、パンを浸す。', 'バターを溶かしたフライパンで弱火でじっくり焼く。'] },
+  { name: 'ひき肉のピーマン肉詰め', time: 25,
+    ings: [['合いびき肉', '200g', 1], ['ピーマン', '4個', 1], ['玉ねぎ', '1/2個', 0], ['卵', '1個', 0], ['小麦粉', '大さじ1', 0], ['ケチャップ', '大さじ2', 0], ['酒', '大さじ1', 0]],
+    steps: ['玉ねぎはみじん切りにして炒め、冷ます。', 'ひき肉・玉ねぎ・卵・小麦粉を練り、ピーマンに詰める。', '肉側を下にして焼き、焼き色がついたら蓋をして蒸し焼きにする。', 'ケチャップと酒を加えて絡める。'] },
+  { name: '豚バラと白菜の蒸し煮', time: 15,
+    ings: [['豚バラ肉', '200g', 1], ['白菜', '1/4個', 1], ['酒', '大さじ2', 0], ['醤油', '小さじ2', 0], ['にんにく', '1片', 0]],
+    steps: ['白菜は食べやすい大きさに切る。', '鍋に白菜と豚肉を交互に重ね、酒と醤油を振る。', '蓋をして弱火で蒸し、豚肉に火が通ったら完成。'] },
+  { name: 'ブロッコリーとベーコンの炒め物', time: 8,
+    ings: [['ブロッコリー', '1株', 1], ['ベーコン', '2枚', 1], ['にんにく', '1片', 0]],
+    steps: ['ブロッコリーは小房に分け、茹でて水気を切る。', 'ベーコンとにんにくを炒め、ブロッコリーを加えて炒め合わせる。', '塩こしょうで味を調える。'] },
+  { name: 'ツナとキャベツのパスタ', time: 20,
+    ings: [['パスタ', '200g', 1], ['ツナ缶', '1缶', 1], ['キャベツ', '1/4個', 0], ['にんにく', '1片', 0]],
+    steps: ['パスタを茹で始める。', 'キャベツをざく切りにして、にんにくと油で炒める。', 'ツナを油ごと加えて炒め、茹で汁少々とパスタを入れて和える。'] },
+  { name: 'ハムと卵のチャーハン', time: 12,
+    ings: [['ご飯', '2膳分', 1], ['卵', '2個', 1], ['ハム', '3枚', 1], ['長ねぎ', '1/2本', 0], ['醤油', '小さじ2', 0], ['ごま油', '大さじ1', 0]],
+    steps: ['ハムと長ねぎを細かく切る。', '溶き卵を炒めてご飯を加え、ほぐしながら炒める。', 'ハムと長ねぎを加え、醤油とごま油で仕上げる。'] },
+  { name: 'ささみときゅうりのごま和え', time: 12,
+    ings: [['ささみ', '2本', 1], ['きゅうり', '1本', 1], ['ごま', '大さじ1', 0], ['醤油', '小さじ1', 0], ['砂糖', '小さじ1', 0]],
+    steps: ['ささみは耐熱皿で蒸すか電子レンジで加熱し、粗くほぐす。', 'きゅうりは細切りにして塩もみし、水気を絞る。', '調味料とごまを合わせ、ささみときゅうりを和える。'] },
+  { name: 'かぼちゃの煮物', time: 25,
+    ings: [['かぼちゃ', '1/4個', 1], ['醤油', '大さじ1', 0], ['みりん', '大さじ1', 0], ['砂糖', '大さじ1', 0], ['だし', '200ml', 0]],
+    steps: ['かぼちゃは種を取り、一口大に切る。', 'だしと調味料で、皮を下にして並べて煮る。', 'かぼちゃがやわらかくなったら火を止め、味をなじませる。'] },
+  { name: 'さつまいもの甘辛煮', time: 20,
+    ings: [['さつまいも', '1本', 1], ['醤油', '大さじ1', 0], ['みりん', '大さじ1', 0], ['砂糖', '大さじ2', 0]],
+    steps: ['さつまいもは1cm厚の輪切りにし、水にさらす。', 'かぶるくらいの水と調味料で煮る。', '竹串がすっと通ったら、煮汁を煮詰めて絡める。'] },
+  { name: 'えのきと豚バラのレンジ蒸し', time: 10,
+    ings: [['えのき', '1袋', 1], ['豚バラ肉', '150g', 1], ['ポン酢', '大さじ2', 0]],
+    steps: ['えのきは根元を落としてほぐす。', '豚肉をえのきで包み、耐熱皿に並べる。', 'ラップをして電子レンジで火が通るまで加熱し、ポン酢で食べる。'] },
+  { name: 'ウインナーとじゃがいものソテー', time: 15,
+    ings: [['ウインナー', '6本', 1], ['じゃがいも', '2個', 1], ['玉ねぎ', '1/2個', 0], ['バター', '10g', 0]],
+    steps: ['じゃがいもは薄切りにして、電子レンジで火を通す。', 'ウインナーと玉ねぎを炒め、じゃがいもを加える。', 'バターを加え、焼き色がつくまで炒める。'] },
+  { name: 'かまぼこときゅうりの酢の物', time: 8,
+    ings: [['かまぼこ', '1本', 1], ['きゅうり', '1本', 1], ['酢', '大さじ2', 0], ['砂糖', '大さじ1', 0]],
+    steps: ['きゅうりは薄切りにして塩もみし、水気を絞る。', 'かまぼこは薄切りにする。', '酢と砂糖を合わせた甘酢で和える。'] },
+  { name: '厚揚げの甘辛煮', time: 12,
+    ings: [['厚揚げ', '2枚', 1], ['長ねぎ', '1/2本', 0], ['醤油', '大さじ2', 0], ['みりん', '大さじ1', 0], ['砂糖', '大さじ1', 0]],
+    steps: ['厚揚げは熱湯をかけて油抜きし、一口大に切る。', '長ねぎは斜め切りにする。', '調味料と水で厚揚げと長ねぎを煮詰めて絡める。'] },
+  { name: 'レタスとチーズのサラダ', time: 5,
+    ings: [['レタス', '1/2個', 1], ['チーズ', '50g', 1], ['ハム', '2枚', 0], ['マヨネーズ', '大さじ2', 0]],
+    steps: ['レタスは手でちぎって水気を切る。', 'チーズとハムは一口大に切る。', '器に盛り、マヨネーズをかける。'] },
+  { name: '卵とほうれん草のカレー炒め', time: 10,
+    ings: [['卵', '2個', 1], ['ほうれん草', '1/2束', 1], ['カレー粉', '小さじ1', 0], ['玉ねぎ', '1/4個', 0]],
+    steps: ['ほうれん草は4cm幅に切る。', '玉ねぎを炒め、ほうれん草と卵を加えて炒める。', 'カレー粉を加えて味を整える。'] },
+  { name: 'トマトと卵の炒め物', time: 8,
+    ings: [['トマト', '2個', 1], ['卵', '3個', 1], ['砂糖', '小さじ1', 0]],
+    steps: ['トマトは一口大に切る。', '溶き卵を半熟に炒めて取り出す。', 'トマトを炒めて砂糖を加え、卵を戻して混ぜる。'] },
+  { name: 'ねぎ塩豚丼', time: 15,
+    ings: [['豚こま肉', '200g', 1], ['長ねぎ', '1本', 1], ['ご飯', '2膳分', 1], ['ごま油', '小さじ2', 0]],
+    steps: ['長ねぎはみじん切りにし、ごま油と塩で和える。', '豚肉を強火で炒め、塩こしょうで味を付ける。', 'ご飯に豚肉をのせ、ねぎ塩をかける。'] }
+];
+
+const $ = (sel) => document.querySelector(sel);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// 残り日数から、傷みやすさの段階を決める
+const tierOf = (days) => (days <= 2 ? 'urgent' : days <= 4 ? 'soon' : 'ok');
+const TIER_LABEL = { urgent: '今日・明日中', soon: '数日以内', ok: '余裕あり' };
+// レシピの優先度に使う重み（傷みやすい材料ほど大きい）
+const urgencyWeight = (days) => (days <= 2 ? 5 : days <= 4 ? 3 : days <= 7 ? 1 : 0);
+
+let items = loadItems();
+
+function loadItems() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(KEY) || '[]');
+    return Array.isArray(saved)
+      ? saved
+          .filter((x) => x && typeof x.name === 'string' && Number.isFinite(x.days))
+          .map((x) => ({
+            ...x,
+            amount: typeof x.amount === 'string' ? x.amount : (Number.isFinite(x.count) ? `${x.count}個` : ''),
+          }))
+      : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveItems() {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(items));
+  } catch (e) {
+    // 保存できない環境（プライベートウィンドウ等）では、画面上の一時的な一覧として動く
+  }
+}
+
+function rankRecipes() {
+  const stock = new Map(items.map((i) => [i.name, i.days]));
+  return RECIPES.map((rec) => {
+    const ings = rec.ings.filter(([name]) => !PANTRY.includes(name));
+    const have = [];
+    const missMain = [];
+    const missSub = [];
+    let score = 0;
+    let urgentUsed = 0;
+    let mainHave = 0;
+    for (const [name, , role] of ings) {
+      if (stock.has(name)) {
+        const days = stock.get(name);
+        have.push({ name, days });
+        score += urgencyWeight(days) * (role ? 2 : 1);
+        if (days <= 4) urgentUsed++;
+        if (role) mainHave++;
+      } else if (role) {
+        missMain.push(name);
+      } else {
+        missSub.push(name);
+      }
+    }
+    score -= missMain.length * 3;
+    return { rec, have, missMain, missSub, score, urgentUsed, mainHave };
+  })
+    .filter((r) => r.mainHave > 0)
+    .sort((a, b) => b.score - a.score || a.missMain.length - b.missMain.length);
+}
+
+// 材料の分量から個数を読む（「2個」「1/2本」「2膳分」など個数で数えるもの。g・mlなどはnull）
+function countNeeded(amount) {
+  const m = String(amount).match(/^(\d+(?:\/\d+)?)\s*(個|本|枚|丁|切れ|束|膳分?|玉|袋|缶|株|パック|片)/);
+  if (!m) return null;
+  const [n, d] = m[1].split('/');
+  return d ? Number(n) / Number(d) : Number(n);
+}
+
+// 手持ちの個数が必要数に足りない材料と、足りない数（個）を返す
+function lackOf(rec) {
+  const stock = new Map(items.map((i) => [i.name, countNeeded(i.amount)]));
+  const lack = new Map();
+  for (const [name, amount] of rec.ings) {
+    const need = countNeeded(amount);
+    const have = stock.get(name);
+    if (need === null || have === undefined || have === null || PANTRY.includes(name)) continue;
+    const short = need - have;
+    if (short > 0) lack.set(name, Math.ceil(short));
+  }
+  return lack;
+}
+
+function renderStock() {
+  const sorted = [...items].sort((a, b) => a.days - b.days);
+  $('#stockCount').textContent = items.length ? `${items.length}品` : '';
+  $('#stockEmpty').hidden = items.length > 0;
+  $('#stock').innerHTML = sorted.map((i) => {
+    const tier = tierOf(i.days);
+    const label = i.days <= 0 ? '期限を過ぎています' : `あと${i.days}日`;
+    return `<li class="stock-item tier-${tier}">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="stock-name">${esc(i.name)}${i.amount ? `　${esc(i.amount)}` : ''}</span>
+      <span class="stock-days" title="${TIER_LABEL[tier]}">${label}</span>
+      <button type="button" class="remove" data-name="${esc(i.name)}" aria-label="${esc(i.name)}を削除">×</button>
+    </li>`;
+  }).join('');
+}
+
+function renderRecipes() {
+  const box = $('#recipes');
+  if (!items.length) {
+    box.innerHTML = '<p class="empty">材料がありません。材料を入れてから「レシピを作成」を押してください。</p>';
+    return;
+  }
+  const ranked = rankRecipes();
+  if (!ranked.length) {
+    box.innerHTML = '<p class="empty">今の材料では主材料が足りません。材料を追加してください。</p>';
+    return;
+  }
+  const stockMap = new Map(items.map((i) => [i.name, i.days]));
+  box.innerHTML = ranked.map((r) => {
+    const headline = r.urgentUsed > 0
+      ? `傷みやすい材料を${r.urgentUsed}品使います。`
+      : `手持ちの材料を${r.have.length}品使います。`;
+    const usedChips = r.have.map((h) =>
+      `<span class="chip tier-${tierOf(h.days)}">${esc(h.name)}</span>`).join('');
+    const lack = lackOf(r.rec);
+    const buyNames = [...r.missMain, ...[...lack].map(([n, k]) => `${n}（あと${k}個）`)];
+    const buyLine = buyNames.length
+      ? `<p class="buy">買い足し：${buyNames.map(esc).join('、')}</p>`
+      : '<p class="ok-line">主材料はそろっています。</p>';
+    const ingRows = r.rec.ings.map(([name, amt, role]) => {
+      let tag;
+      if (PANTRY.includes(name)) tag = '<span class="tag">常備品</span>';
+      else if (stockMap.has(name)) tag = lack.has(name)
+        ? `<span class="tag need">あと${lack.get(name)}個</span>`
+        : '<span class="tag have">手持ち</span>';
+      else if (role) tag = '<span class="tag need">買い足し</span>';
+      else tag = '<span class="tag">任意</span>';
+      return `<li><span>${esc(name)}</span><span class="amt">${esc(amt)}</span>${tag}</li>`;
+    }).join('');
+    const steps = r.rec.steps.map((s) => `<li>${esc(s)}</li>`).join('');
+    return `<article class="recipe">
+      <div class="recipe-head">
+        <h3>${esc(r.rec.name)}</h3>
+        <div class="recipe-actions">
+          <span class="time">約${r.rec.time}分</span>
+          <button type="button" class="btn ghost save-one" data-name="${esc(r.rec.name)}" ${isSaved(r.rec.name) ? 'disabled' : ''}>${isSaved(r.rec.name) ? '保存済み' : '保存'}</button>
+        </div>
+      </div>
+      <p class="summary">${headline}</p>
+      <div class="chips">${usedChips}</div>
+      ${buyLine}
+      <details>
+        <summary>材料と作り方</summary>
+        <ul class="ings">${ingRows}</ul>
+        <ol class="steps">${steps}</ol>
+      </details>
+    </article>`;
+  }).join('');
+}
+
+function render() {
+  renderStock();
+  renderSaved();
+}
+
+// レシピと買い足しメモは「レシピを作成」を押したときだけ更新する
+function makeRecipes() {
+  renderRecipes();
+}
+
+let saved = loadSaved();
+
+function isSaved(name) {
+  return saved.some((s) => s.name === name);
+}
+
+// 表示中のレシピカードの保存ボタンを、保存状態に合わせる
+function syncSaveButtons() {
+  document.querySelectorAll('button.save-one').forEach((btn) => {
+    const on = isSaved(btn.dataset.name);
+    btn.disabled = on;
+    btn.textContent = on ? '保存済み' : '保存';
+  });
+}
+
+function loadSaved() {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+    return Array.isArray(v)
+      ? v.filter((x) => x && RECIPES.some((r) => r.name === x.name))
+      : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveSaved() {
+  try {
+    localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  } catch (e) {
+    // 保存できない環境では、このページを開いている間だけ一覧に残る
+  }
+}
+
+function renderSaved() {
+  $('#savedCount').textContent = saved.length ? `（${saved.length}）` : '';
+  $('#savedEmpty').hidden = saved.length > 0;
+  $('#savedList').innerHTML = saved.map((s) => {
+    const rec = RECIPES.find((r) => r.name === s.name);
+    // 買い足しは現在の手持ちとの差分で計算する（手持ちが変われば保存レシピの表示も変わる）
+    const stockNames = new Set(items.map((i) => i.name));
+    const lack = lackOf(rec);
+    const buy = [
+      ...rec.ings.filter(([n]) => !PANTRY.includes(n) && !stockNames.has(n)),
+      ...[...lack].map(([n, k]) => [n, `あと${k}個`, 1]),
+    ];
+    const buyHtml = buy.length
+      ? `<ul class="shopping-list">${buy.map(([n, a, role]) => `<li>
+          <span>${esc(n)}</span>
+          <span class="amt">${esc(a)}</span>
+          ${role ? '' : '<span class="tag">任意</span>'}
+        </li>`).join('')}</ul>`
+      : '<p class="ok-line">材料はすべて手持ちです。</p>';
+    const ingRows = rec.ings.map(([n, a, role]) => {
+      let tag;
+      if (PANTRY.includes(n)) tag = '<span class="tag">常備品</span>';
+      else if (stockNames.has(n)) tag = lack.has(n)
+        ? `<span class="tag need">あと${lack.get(n)}個</span>`
+        : '<span class="tag have">手持ち</span>';
+      else if (role) tag = '<span class="tag need">買い足し</span>';
+      else tag = '<span class="tag">任意</span>';
+      return `<li><span>${esc(n)}</span><span class="amt">${esc(a)}</span>${tag}</li>`;
+    }).join('');
+    const steps = rec.steps.map((t) => `<li>${esc(t)}</li>`).join('');
+    return `<li class="recipe">
+      <div class="recipe-head">
+        <h3>${esc(rec.name)}</h3>
+        <span class="time">約${rec.time}分 ・ 保存 ${esc(s.savedAt)}</span>
+      </div>
+      <p class="muted">買い足し（現在の手持ちとの差分）</p>
+      ${buyHtml}
+      <details>
+        <summary>材料と作り方</summary>
+        <ul class="ings">${ingRows}</ul>
+        <ol class="steps">${steps}</ol>
+      </details>
+      <div><button type="button" class="btn ghost" data-name="${esc(rec.name)}">保存から削除</button></div>
+    </li>`;
+  }).join('');
+}
+
+function renderFoodList() {
+  const names = [...Object.keys(FOODS), ...PANTRY];
+  $('#foodList').innerHTML = names.map((n) => `<option value="${esc(n)}"></option>`).join('');
+}
+
+$('#nameInput').addEventListener('input', (e) => {
+  const known = FOODS[e.target.value.trim()];
+  $('#daysInput').placeholder = known != null ? `目安 ${known}日` : `自動（${DEFAULT_DAYS}日）`;
+});
+
+$('#addForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = $('#nameInput').value.trim();
+  if (!name) return;
+  const raw = $('#daysInput').value.trim();
+  const days = raw === '' ? (FOODS[name] ?? DEFAULT_DAYS) : Number(raw);
+  if (!Number.isFinite(days)) return;
+  const amount = normalizeAmount(name, $('#countInput').value.trim());
+  items = items.filter((i) => i.name !== name).concat({ name, days, amount });
+  saveItems();
+  e.target.reset();
+  $('#daysInput').placeholder = '自動';
+  $('#nameInput').focus();
+  render();
+});
+
+$('#stock').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-name]');
+  if (!btn) return;
+  const name = btn.dataset.name;
+  items = items.filter((i) => i.name !== name);
+  saveItems();
+  render();
+});
+
+$('#makeBtn').addEventListener('click', makeRecipes);
+
+// レシピごとの保存ボタン。押したら保存済みに切り替え、もう一度押せないようにする
+$('#recipes').addEventListener('click', (e) => {
+  const btn = e.target.closest('button.save-one');
+  if (!btn || btn.disabled) return;
+  const name = btn.dataset.name;
+  saved = saved.concat({ name, savedAt: new Date().toLocaleDateString('ja-JP') });
+  saveSaved();
+  renderSaved();
+  syncSaveButtons();
+});
+
+// 「保存レシピ一覧」で保存レシピの画面に切り替え、「レシピに戻る」で元の画面に戻る
+function showSavedView(on) {
+  $('#mainView').hidden = on;
+  $('#savedView').hidden = !on;
+  window.scrollTo(0, 0);
+}
+
+$('#savedToggle').addEventListener('click', () => showSavedView(true));
+$('#backBtn').addEventListener('click', () => showSavedView(false));
+
+$('#savedList').addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-name]');
+  if (!btn) return;
+  saved = saved.filter((s) => s.name !== btn.dataset.name);
+  saveSaved();
+  renderSaved();
+  syncSaveButtons();
+});
+
+renderFoodList();
+render();
+renderSaved();
+$('#recipes').innerHTML = '<p class="empty">材料を入れて「レシピを作成」を押すと、ここにレシピが並びます。</p>';
+</script>
+
+</body></html>
